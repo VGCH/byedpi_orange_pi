@@ -37,14 +37,14 @@ service hostapd stop
 interface=wlan0
 driver=nl80211
 country_code=RU
-ssid=INTERNETNODPI
+ssid=INTERNETNODPI          #Wi-Fi AP SSID
 hw_mode=a
 channel=36
 ieee80211n=1
 ieee80211ac=1
 vht_capab=[VHT80][SHORT-GI-80]
 wpa=2
-wpa_passphrase=NoDPI12345
+wpa_passphrase=NoDPI12345  #PASSWORD 
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=TKIP
 rsn_pairwise=CCMP
