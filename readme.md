@@ -185,7 +185,7 @@ sudo chmod +x  /etc/network/if-pre-up.d/iptables
 ```no-highlight
 git clone https://github.com/VGCH/byedpi_orange_pi
 ```
-Переходим в папку с репизиторием и собираем 
+Переходим в папку с репозиторием и собираем 
 
 ```no-highlight
 сd byedpi_orange_pi
