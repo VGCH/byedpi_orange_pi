@@ -1,9 +1,229 @@
-## Аппаратный прокси на базе Orange Pi Zero 2
+## Аппаратный прокси на базе Orange Pi Zero 2 и Debian 12
 
 ![Orange Pi Zero 2](http://www.orangepi.org/img/orange-pi-zero2-banner-img.png)
 
+Для работы нужны следующие пакеты
+> hostapd
+> dnsmasq
+> redsocks
+> ciadpi
+
+###  Установка и настройка hostapd
+
+```no-highlight
+sudo apt-get install hostapd
+```
+Редактируем файл /etc/default/hostapd.conf. 
+
+```no-highlight
+sudo nano /etc/default/hostapd.conf
+```
+
+Раскомментировать строку
+
+```no-highlight
+DAEMON_CONF="/etc/hostapd/hostapd.conf"
+```
+Остановим сервис hostapd
+
+```no-highlight
+service hostapd stop
+```
+Конфигурация Wi-Fi Хотспота hostapd
+
+```no-highlight
+interface=wlan0
+driver=nl80211
+country_code=RU
+ssid=INTERNETNODPI
+hw_mode=a
+channel=36
+ieee80211n=1
+ieee80211ac=1
+vht_capab=[VHT80][SHORT-GI-80]
+wpa=2
+wpa_passphrase=NoDPI12345
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+auth_algs=1
+macaddr_acl=0
+
+```
+В данной конфигурации реализована Wi-Fi точка доступа 5ГГц, стандарт 802.11n, 802.11ac, частотный канал 36
+wlan0 - беспроводной сетевой интерфейс, определяется с помощью команды:
+
+```no-highlight
+ip a
+```
+Конфигурация сетевого интерфейса 
+
+```no-highlight
+sudo nano /etc/network/interfaces
+```
+
+Содержимое конфигурационного файла
+
+```no-highlight
+source /etc/network/interfaces.d/*
+# Network is managed by Network manager
+auto lo
+iface lo inet loopback
+auto wlan0
+iface wlan0 inet static
+address 192.168.50.1
+netmask 255.255.255.0
+gateway 192.168.50.1
+```
+Беспроводному интерфейсу назначен IP адрес 192.168.50.1
+
+Настройка DHCP сервера для Wi-Fi Хотспота, установим dnsmasq
+
+установка dnsmasq
+
+```no-highlight
+sudo apt-get install dnsmasq
+```
+Остановим сервис dnsmasq
+
+```no-highlight
+service dnsmasq stop
+```
+
+Редактируем файл конфигурации 
+
+```no-highlight
+sudo nano /etc/dnsmasq.conf
+```
+
+Содержимое файла конфигурации 
+
+```no-highlight
+interface=wlan0                                 # Use interface wlan0
+listen-address=192.168.50.1                     # Explicitly specify the address to>
+bind-interfaces                                 # Bind to the interface to make sur>
+server=8.8.8.8                                  # Forward DNS requests to Google DNS
+domain-needed                                   # Don't forward short names
+bogus-priv                                      # Never forward addresses
+dhcp-range=192.168.50.50,192.168.50.150,12h     # IP range DHCP
+```
+
+Установка и настройка redsocks
+
+```no-highlight
+sudo apt-get install redsocks
+```
+
+Редактируем конфигурационный файл
+
+```no-highlight
+sudo nano /etc/redsocks.conf
+```
+Содержание файла конфигурации
+
+```no-highlight
+base {
+    log_debug = off;
+    log_info = on;
+    log = "file:/var/log/redsocks.log";
+    daemon = on;
+    redirector = iptables;
+}
+
+redsocks {
+    local_ip = 0.0.0.0;
+    local_port = 12345;
+    ip = 127.0.0.1;   
+    port = 1080;    
+    type = socks5;
+}
+```
+
+Настройка iptables для перенаправления трафика
+
+```no-highlight
+sudo iptables -t nat -N REDSOCKS
+sudo iptables -t nat -A REDSOCKS -d 192.168.50.0/24 -j RETURN        # Исключаем локальную сеть
+sudo iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports 12345
+sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp -j REDSOCKS
+```
+
+Добавляем правила iptables для автозагрузки при запуске системы
+
+Сохранение текущих правил iptables в файл iptables.rules. Создаем файл и ограничиваем к нему доступ
+```no-highlight
+sudo touch /etc/iptables.rules
+sudo chmod 640 /etc/iptables.rules
+```
+
+Сохраняем текущие правила iptables в файл
+
+```no-highlight
+sudo iptables-save | sudo tee /etc/iptables.rules
+```
+Автозагрузка сохраненных правил
+
+В /etc/network/if-pre-up.d/ создаём файл iptables, со следующим содержимым
+
+```no-highlight
+#!/bin/sh
+iptables-restore < /etc/iptables.rules
+exit 0
+```
+
+Делаем созданный сценарий исполнимым
+
+```no-highlight
+sudo chmod +x  /etc/network/if-pre-up.d/iptables
+```
+Создаем сервис ciadpi (DPI bypass) под не root пользователем, например orangepi
+
+Клонируем репозитарий 
+
+```no-highlight
+git clone https://github.com/VGCH/byedpi_orange_pi
+```
+Переходим в папку с репизиторием и собираем 
+
+```no-highlight
+сd byedpi_orange_pi
+make
+```
+
+Создаем скрипт сервиса byedpi_orange_pi для автозапуска
+
+```no-highlight
+nano /etc/systemd/system/byedpi_orange_pi.service
+```
+И сохраняем следующее содержимое 
+
+```no-highlight
+[Unit]
+Description=dpi port 1080
+After=network.target
+
+[Service]
+User=orangepi
+Group=orangepi
+ExecStart=/home/orangepi/byedpi_orange_pi/ciadpi --disorder 1 --auto=torst --tlsrec 1+s
+
+[Install]
+WantedBy=multi-user.target
+```
+Добавляем скрипт в автозагрузку 
+
+```no-highlight
+systemctl enable byedpi_orange_pi
+```
+Перезагружаем систему и проверяем работу
+
+```no-highlight
+sudo shutdown -r now
+```
 
 
+
+## Ниже описание аргументов от автора ByeDPI
 
 Implementation of some DPI bypass methods.
 The program is a local SOCKS proxy server.
