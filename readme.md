@@ -15,7 +15,7 @@ Ethernet подключение выполняется к оператору с�
 ```no-highlight
 sudo apt-get install hostapd
 ```
-Редактируем файл /etc/default/hostapd.conf. 
+Редактируем файл /etc/default/hostapd
 
 ```no-highlight
 sudo nano /etc/default/hostapd.conf
