@@ -144,10 +144,13 @@ redsocks {
 Настройка iptables для перенаправления трафика
 
 ```no-highlight
+sudo iptables -A FORWARD -i end0 -o end0 -j ACCEPT
+sudo iptables -t nat -A POSTROUTING -o end0 -j MASQUERADE
 sudo iptables -t nat -N REDSOCKS
 sudo iptables -t nat -A REDSOCKS -d 192.168.50.0/24 -j RETURN        # Исключаем локальную сеть
 sudo iptables -t nat -A REDSOCKS -p tcp -j REDIRECT --to-ports 12345
 sudo iptables -t nat -A PREROUTING -i wlan0 -p tcp -j REDSOCKS
+sudo iptables -t nat -A PREROUTING -i end0 -p tcp -j REDSOCKS
 ```
 
 Добавляем правила iptables для автозагрузки при запуске системы
