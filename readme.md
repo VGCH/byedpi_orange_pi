@@ -9,6 +9,24 @@
 > ciadpi
 
 Ethernet подключение выполняется к оператору связи, к  Wi-Fi Хотспоту подключаются клиенты.
+###  Включение IP-Forwarding
+
+Редактируем файл /etc/sysctl.conf
+
+```no-highlight
+sudo nano /etc/sysctl.conf
+```
+
+Найдем и раскомментируем строку
+
+```no-highlight
+net.ipv4.ip_forward=1
+```
+Выполнить команду, чтобы применить изменения
+
+```no-highlight
+sudo sysctl -p
+```
 
 ###  Установка и настройка hostapd
 
